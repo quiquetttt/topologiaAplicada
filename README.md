@@ -6,6 +6,7 @@ En este entrega debes entregar un archivo de Python que contenga el código rela
 Cada práctica tiene un peso de 2 puntos sobre la nota final. Los contenidos de cada práctica son:
 
 Práctica 1: Complejos simpliciales
+-----------------------------------
 
 Clase Complejos simpliciales que permita almacenar complejos simpliciales introduciendo sus símplices maximales y un flotante (filtración) y que contenga métodos que permitan:
 Calcular la dimensión del complejo simplicial.
@@ -18,12 +19,16 @@ Calcular el número de componentes de conexas.
 Añadir símplices nuevos (con su flotante).
 Almacenar la lista de todos los símplices ordenados según el valor del flotante y en caso de que dos tengan el mismo flotante ordenar por dimensión (las caras aparecen primero)
 Calcular el complejo simplicial formado por todos los símplices cuyo flotante asociado sea menor o igual que un flotante dado.
+
 Práctica 2: Alfa Complejos
+--------------------------
 
 Definir una función que calcule la filtración de alfa complejos asociada a un conjunto de puntos del plano.
 Definir una función que represente gráficamente dicho alfa complejo.
 Definir una función que calcule la filtración de complejos de Vietoris-Rips asociada a un conjunto de puntos.
+
 Práctica 3: Homología Simplicial
+--------------------------------
 
 Definir una función que calcule la forma normal de Smith de una matriz con coeficientes en Z2
 Definir dentro de la clase Complejo simplicial métodos que permitan:
@@ -42,7 +47,9 @@ Del doble toro.
 De algunos alfa complejos.
 Crear una función que calcule los números de Betti b_0 y b_1 de un complejo simplicial contenido en el plano utilizando el algoritmo incremental. 
 Calcular los números de Betti de algunos alfa complejos del plano utilizando el algoritmo incremental.
+
 Practica 4: Homología persistente
+---------------------------------
 
 Definir un método en la clase complejos simpliciales que calcule la matriz borde generalizado de un complejo simplicial filtrado.
 Definir una función que calcule el low de una columna de una matriz.
