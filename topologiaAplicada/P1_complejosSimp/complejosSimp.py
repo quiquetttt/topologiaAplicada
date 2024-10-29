@@ -269,9 +269,8 @@ def get_simplices_indice_menor_n(self, n):
         i += 1
     return lista_simplices
 
-#################################
-    def __repr__(self):
-        return f"SimplicialComplex({list(self.simplices)})"
+def __repr__(self):
+    return f"SimplicialComplex({list(self.simplices)})"
 
 def thresholdvalues(list):
     return [distance.euclidean(a,b) for a, b in combinations(list, 2)]
