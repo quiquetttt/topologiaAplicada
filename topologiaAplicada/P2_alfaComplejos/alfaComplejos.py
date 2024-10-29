@@ -112,3 +112,5 @@ draw_alpha_complex(points, alpha_filtration)
 
 # Compute Vietoris-Rips filtration
 vr_filtration = vietoris_rips_filtration(points, threshold)
+
+##checkeando rama quuique
