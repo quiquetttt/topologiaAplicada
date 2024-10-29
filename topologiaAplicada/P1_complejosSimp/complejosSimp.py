@@ -1,4 +1,9 @@
 """
+Rama 
+"""
+
+
+"""
 Clase Complejos simpliciales que permita almacenar complejos simpliciales introduciendo sus símplices maximales y un flotante (filtración) y que contenga métodos que permitan:
 1.Calcular la dimensión del complejo simplicial.
 2.Calcular el conjunto de todas las caras del complejo simplicial.
