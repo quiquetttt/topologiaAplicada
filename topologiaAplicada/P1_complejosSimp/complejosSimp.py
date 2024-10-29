@@ -107,6 +107,18 @@ class SimplicialComplex:
         else:
             raise TypeError("Expected a Simplex object")
         
+
+    def get_lista_ord(self):
+        return self.lista_ordenada
+
+    def get_simplices_indice_menor_n(self, n):
+        lista_simplices = []
+        i = 0
+        while i<len(self.lista_ordenada) and n>=self.lista_ordenada[i].indice:
+            lista_simplices.append(self.lista_ordenada[i])
+            i = i+1
+        return lista_simplices
+
 """1.Calcular la dimensión del complejo simplicial."""
 def dimension(self):
     """Return the dimension of the simplicial complex (largest simplex dimension)"""
@@ -256,3 +268,116 @@ def get_simplices_indice_menor_n(self, n):
         lista_simplices.append(self.lista_ordenada[i])
         i += 1
     return lista_simplices
+
+#################################
+    def __repr__(self):
+        return f"SimplicialComplex({list(self.simplices)})"
+
+def thresholdvalues(list):
+    return [distance.euclidean(a,b) for a, b in combinations(list, 2)]
+
+def vietoris_rips_filtration(points, threshold):
+    """
+    Construye la filtración de Vietoris-Rips para un conjunto de puntos.
+    
+    Parámetros:
+    - points: una lista de puntos (coordenadas 2D).
+    - max_dimension: dimensión máxima de los simplíces a considerar.
+    - threshold: umbral de distancia para agregar aristas.
+    
+    Retorna:
+    - filtration: una lista de objetos de SimplicialComplex, uno para cada paso en la filtración.
+    """
+    num_points = len(points)
+    filtration = []
+
+    # Paso 1: Crear todos los 0-simplices (vértices)
+    simplices = [Simplex([i], 0) for i in range(num_points)]
+    complex = SimplicialComplex(set(simplices))
+    filtration.append(complex)
+    
+    print(f"Paso 1: Añadidos {num_points} 0-simplices (vértices)")
+
+    # Obtener las distancias entre cada par de puntos
+    distancias = [(distance.euclidean(points[i], points[j]), (i, j)) for i, j in combinations(range(num_points), 2)]
+    
+    
+    # Paso 2: Crear todos los simplíces de mayor dimensión
+    new_simplices = []
+    for dist, pair in distancias:
+        if dist <= threshold:
+            complex.add_simplex(Simplex([pair[0],pair[1]],dist)) #FINALIZAR AQUIIIIII AÑADIR LOS SIMPLICES Y YA
+            draw_points(points, dist);
+        else:
+            break  # Si la distancia excede el umbral, dejamos de añadir nuevas simplices
+
+        # Si hemos añadido nuevos simplíces, los incorporamos al complejo simplicial
+    if new_simplices:
+        new_complex = SimplicialComplex(complex.simplices.union(new_simplices))
+        filtration.append(new_complex)
+        complex = new_complex
+
+    return filtration
+
+def my_v_r(points, threshold):
+    n_points = len(points)
+    print(n_points)
+        
+    '''
+num_points = len(points)
+        filtration = []
+        
+        # Step 1: Create all 0-simplices (vertices)
+        simplices = [Simplex([i], 0) for i in range(num_points)]
+        complex = SimplicialComplex(simplices)
+        filtration.append(complex)
+        
+        # Step 2: Create all higher-dimensional simplices
+        for k in range(1, max_dimension + 1):
+            new_simplices = SimplicialComplex()
+            for comb in combinations(range(num_points), k + 1):
+                if all(distance.euclidean(points[i], points[j]) <= threshold for i, j in combinations(comb, 2)):
+                    new_simplices.add_simplex(Simplex(comb, k))
+            
+            if new_simplices:
+                for simplice in new_simplices.simplices:
+                    new_complex = SimplicialComplex(complex.add_simplex(simplice))
+                filtration.append(new_complex)
+                '''
+    
+"""Examples"""
+points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])  # 4 points in a 2D plane
+threshold = 2
+
+my_v_r(points, threshold)
+
+# Create some simplices
+#s1 = Simplex([0, 1])  # A 1-simplex (edge)
+s2 = Simplex([1, 2, 3], 0.0)  # A 2-simplex (triangle)
+s3 = Simplex([1, 2, 3, 4, 5], 0.0)
+# Initialize a simplicial complex
+complex1 = SimplicialComplex([s2])
+print(complex1)
+complex1.add_simplex(Simplex([5], 1.0))
+complex1.add_simplex(Simplex([6], 1.0))
+complex1.add_simplex(Simplex([2], 1.0))
+print(complex1)
+complex1.add_simplex(Simplex([2,4], 1.0))
+print(complex1)
+# 
+
+#complex1.add_simplex(Simplex([1,2,3,4]))
+#print(complex1)
+
+
+# Add another simplex
+#complex1.add_simplex(Simplex([2, 3]))
+points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])  # 4 points in a 2D plane
+max_dimension = 2  # We want simplices up to dimension 2 (i.e., triangles)
+threshold = 1.5  # Distance threshold
+
+filtration = vietoris_rips_filtration(points, threshold)
+
+# Display the filtration
+for i, f in enumerate(filtration):
+    print(f"Filtration step {i}: {f}")
