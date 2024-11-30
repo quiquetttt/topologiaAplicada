@@ -1,0 +1,591 @@
+# %%
+from itertools import combinations
+from scipy.spatial import distance, Delaunay,Voronoi, voronoi_plot_2d
+import matplotlib.pyplot as plt
+import matplotlib.colors
+import matplotlib as mpl
+import numpy as np
+from matplotlib.patches import Circle
+
+class Simplex:
+    def __init__(self, vertices, indice=0.0):
+        # Vertices should be a tuple or list of hashable items
+        self.vertices = tuple(sorted(vertices))  # Sort vertices to maintain consistency
+        self.indice = indice
+
+    def dimension(self):
+        # Dimension of the simplex is the number of vertices - 1
+        return len(self.vertices) - 1
+
+    def faces(self):
+        """Return all faces of the simplex (subsets of vertices)"""
+        
+        # All subsets of size len(vertices) - 1 form faces
+        return [Simplex(vertices, self.indice) for i in range(len(self.vertices)) for vertices in combinations(self.vertices, i)]
+    
+    # Comparison operators for sorting
+    def __lt__(self, other):
+        # First compare by dimension (number of vertices)
+        if self.indice != other.indice:
+            return self.indice < other.indice
+        if len(self.vertices) != len(other.vertices):
+            return len(self.vertices) < len(other.vertices)
+        # If dimensions are the same, compare lexicographically by vertices
+        return self.vertices < other.vertices
+
+    def __eq__(self, other):
+        return self.vertices == other.vertices
+
+    def __hash__(self):
+        return hash(self.vertices)
+
+    def __repr__(self):
+        return f"Simplex{self.vertices} {self.indice}"
+
+
+# %%
+class SimplicialComplex:
+    def __init__(self, simplices=None):
+        # Initialize the complex with a set of simplices
+        self.simplices = set()
+        self.lista_ordenada = []
+        if simplices:
+            for simplex in simplices:
+                self.add_simplex(simplex)
+
+    def add_simplex(self, simplex):
+        """Add a simplex and all its faces to the complex"""
+        if isinstance(simplex, Simplex):
+
+            if len(self.lista_ordenada) == 0:
+                self.simplices.add(simplex)
+                self.lista_ordenada = sorted(self.simplices)
+                return 
+            
+            is_contained = False
+            new_bigger_simplex = False
+            end_of_searching = False
+            
+            remove_simplex = set()
+
+            index=0
+            #As there are only simplex of the same index, we can clean comparing dimensions
+            while index<=len(self.lista_ordenada)-1 and not end_of_searching:
+                if(self.lista_ordenada[index].indice == simplex.indice):
+                    new_bigger_simplex = False
+                    if simplex > self.lista_ordenada[index]:
+                        big_simplex = simplex
+                        small_simplex = self.lista_ordenada[index]
+                        new_bigger_simplex = True
+                    else:
+                        big_simplex = self.lista_ordenada[index]
+                        small_simplex = simplex
+                    is_contained = all(vertice in big_simplex.vertices for vertice in small_simplex.vertices)
+                    if is_contained and new_bigger_simplex:
+                        remove_simplex.add(self.lista_ordenada[index])
+                    elif is_contained:
+                        end_of_searching = True
+                index = index+1
+                for not_useful_simplex in remove_simplex:
+                    self.simplices.discard(not_useful_simplex)
+                    if not_useful_simplex in self.lista_ordenada:
+                        self.lista_ordenada.remove(not_useful_simplex)
+                if not end_of_searching:
+                    self.simplices.add(simplex)
+                    self.lista_ordenada = sorted(self.simplices)
+            
+        else:
+            raise TypeError("Expected a Simplex object")
+            
+            
+
+    # If no dimension value is given, it will return all posible faces
+    def get_faces(self, dim=-1):
+        all_faces = set()
+        for simplex in self.simplices:
+            if dim < 0 or (dim >= 0 and simplex.dimension() == dim): 
+                    all_faces.add(simplex)
+            for face in simplex.faces():
+                if dim < 0 or (dim >= 0 and face.dimension() == dim): 
+                    all_faces.add(face)
+        return sorted(all_faces)
+
+    def get_estrella(self, simplice):
+        if not isinstance(simplice, Simplex):
+            return "This was not instance of Simplex"
+            
+        actual_dim = simplice.dimension()
+        all_faces = sorted(self.get_faces(), reverse=True)
+        number_faces = len(all_faces)
+        
+        if simplice not in all_faces:
+            return "there is not such simplice in the complex"
+        estrella = set()
+        actual_vertices = simplice.vertices
+        index = 0
+        while index < number_faces and all_faces[index].dimension() >= actual_dim:
+            is_contained = all(vertice in all_faces[index].vertices for vertice in actual_vertices)
+            if is_contained:
+                estrella.add(all_faces[index])
+            index = index+1
+        return sorted(estrella)
+
+    def get_link(self, simplice):
+        estrella = self.get_estrella(simplice)
+        vertices = simplice.vertices
+        estrella_cerrada = set()
+        link = set()
+        for cara in estrella:
+            if cara not in estrella_cerrada:
+                estrella_cerrada.update(cara.faces())
+        for cara in estrella_cerrada:
+            intersection = any(vertice in cara.vertices for vertice in vertices)
+            if not intersection:
+                link.add(cara)
+        return sorted(link)
+
+    def get_euler(self):
+        faces = self.get_faces()
+        caracteristic = 0
+        for face in faces:
+            if face.dimension() != -1:
+                caracteristic = caracteristic + (1-2*(face.dimension()%2))
+        return caracteristic
+
+    
+    def get_numero_componentes_conexas(self):
+        numero_componentes_conexas = 1
+        vertices = set()
+        complejo_simplicial = set(self.simplices)
+        aux = complejo_simplicial.pop().vertices
+        for vertice in aux:
+            vertices.add(vertice)
+
+        simplice_actual = None
+        intersection = False
+        while(complejo_simplicial):
+            for simplice in complejo_simplicial:
+                # Put the vertices in a comparable level with the list of vertices.
+
+                #So we can remember the simplice after exiting the loop
+                simplice_actual = simplice
+
+                #look for any intersection in the simplices, if there is, then no componente conexa was found.
+                intersection = any(vertice in simplice.vertices for vertice in vertices)
+                if intersection:
+                   break;     
+                
+            if not intersection:
+                numero_componentes_conexas = numero_componentes_conexas+1
+
+            vertices.update(simplice_actual.vertices)
+            complejo_simplicial.remove(simplice_actual)
+        return numero_componentes_conexas
+
+    def get_lista_ord(self):
+        return self.lista_ordenada
+
+    def get_simplices_indice_menor_n(self, n):
+        lista_simplices = []
+        i = 0
+        while i<len(self.lista_ordenada) and n>=self.lista_ordenada[i].indice:
+            lista_simplices.append(self.lista_ordenada[i])
+            i = i+1
+        return lista_simplices
+
+    def calcular_matriz_borde(self, dim):
+        """
+        Calcula la matriz borde para los símplices de dimensión dim en un complejo simplicial.
+        
+        Args:
+            complejo (SimplicialComplex): El complejo simplicial.
+            dim (int): La dimensión para la cual calcular la matriz borde.
+            
+        Returns:
+            np.ndarray: La matriz borde.
+        """
+
+        if(dim == 0):
+            num_vertices = len(self.get_faces(0))
+            return np.zeros((1, num_vertices), dtype=int)
+        if(dim == self.dimension):
+            num_hiperplanos = len(self.get_faces(self.dimension-1))
+            return np.ones((num_vertices, 1), dtype=int)
+        
+        # Obtener los símplices de dimensión dim y dim-1
+        simplices_dim = [s for s in self.get_faces(dim) if s.dimension() == dim]
+        simplices_dim_menos_1 = [s for s in self.get_faces(dim - 1) if s.dimension() == dim - 1]
+    
+        # Crear un diccionario para mapear cada simplex a un índice
+        indice_simplices_dim = {s: i for i, s in enumerate(simplices_dim)}
+        indice_simplices_dim_menos_1 = {s: i for i, s in enumerate(simplices_dim_menos_1)}
+    
+        # Inicializar la matriz borde con ceros
+        matriz_borde = np.zeros((len(simplices_dim_menos_1), len(simplices_dim)), dtype=int)
+    
+        # Llenar la matriz borde
+        for j, simplex in enumerate(simplices_dim):
+            for face in simplex.faces():
+                if face in indice_simplices_dim_menos_1:
+                    i = indice_simplices_dim_menos_1[face]
+                    matriz_borde[i, j] = 1  # En Z2, sólo consideramos 0 o 1
+    
+        return matriz_borde
+
+    def calcular_numero_betti_smith(self):
+        """
+        Calcula los números de Betti de un complejo simplicial usando la forma normal de Smith.
+        
+        Args:
+            complejo (SimplicialComplex): El complejo simplicial.
+        
+        Returns:
+            list: Los números de Betti para cada dimensión.
+        """
+        max_dim = self.dimension()  # Dimensión máxima del complejo
+        #print(max_dim)
+        betti_numbers = []
+    
+        for k in range(max_dim + 1):
+            # Matriz borde para la dimensión k y k+1
+            matriz_borde_k = self.calcular_matriz_borde(k)
+            matriz_borde_kp1 = self.calcular_matriz_borde(k + 1) if k + 1 <= max_dim else None
+    
+            # Forma normal de Smith
+            matriz_smith_k = smith_normal_form_z2(matriz_borde_k)
+            matriz_smith_kp1 = smith_normal_form_z2(matriz_borde_kp1) if matriz_borde_kp1 is not None else None
+            print("Matriz ",k)
+            print(matriz_smith_k)
+            print("Matriz ",k+1)
+            print(matriz_smith_kp1)
+            # Dimensiones
+            dim_kernel_k = matriz_smith_k.shape[1] - np.sum(np.diag(matriz_smith_k) == 1) if matriz_smith_k.size > 0 else 0
+            dim_image_kp1 = np.sum(np.diag(matriz_smith_kp1) == 1) if matriz_smith_kp1 is not None and matriz_smith_kp1.size > 0 else 0
+            print("Dim Z",k,":")
+            print(dim_kernel_k)
+            print("Dim B",k,":")
+            print(dim_image_kp1)
+            # Número de Betti
+            betti_k = dim_kernel_k - dim_image_kp1
+            betti_numbers.append(betti_k)
+    
+        return betti_numbers
+        
+
+    
+    def dimension(self):
+        """Return the dimension of the simplicial complex (largest simplex dimension)"""
+        return max(s.dimension() for s in self.simplices)
+    
+    def __repr__(self):
+        return f"SimplicialComplex({list(self.simplices)})"
+
+def thresholdvalues(list):
+    return [distance.euclidean(a,b) for a, b in combinations(list, 2)]
+
+def vietoris_rips_filtration(points, threshold):
+    """
+    Construye la filtración de Vietoris-Rips para un conjunto de puntos.
+    
+    Parámetros:
+    - points: una lista de puntos (coordenadas 2D).
+    - max_dimension: dimensión máxima de los simplíces a considerar.
+    - threshold: umbral de distancia para agregar aristas.
+    
+    Retorna:
+    - filtration: una lista de objetos de SimplicialComplex, uno para cada paso en la filtración.
+    """
+    num_points = len(points)
+    filtration = []
+
+    # Paso 1: Crear todos los 0-simplices (vértices)
+    simplices = [Simplex([i], 0) for i in range(num_points)]
+    complex = SimplicialComplex(set(simplices))
+    filtration.append(complex)
+    
+    print(f"Paso 1: Añadidos {num_points} 0-simplices (vértices)")
+
+    # Obtener las distancias entre cada par de puntos
+    distancias = [(distance.euclidean(points[i], points[j]), (i, j)) for i, j in combinations(range(num_points), 2)]
+    
+    
+    # Paso 2: Crear todos los simplíces de mayor dimensión
+    new_simplices = []
+    for dist, pair in distancias:
+        if dist <= threshold:
+            complex.add_simplex(Simplex([pair[0],pair[1]],dist)) #FINALIZAR AQUIIIIII AÑADIR LOS SIMPLICES Y YA
+            draw_points(points, dist);
+        else:
+            break  # Si la distancia excede el umbral, dejamos de añadir nuevas simplices
+
+        # Si hemos añadido nuevos simplíces, los incorporamos al complejo simplicial
+    if new_simplices:
+        new_complex = SimplicialComplex(complex.simplices.union(new_simplices))
+        filtration.append(new_complex)
+        complex = new_complex
+
+    return filtration
+
+        
+
+
+# %%
+
+
+def draw_points(points, threshold=None):
+    """
+    Draw points, edges between them if their distance is below the threshold, 
+    and circles of radius threshold/2 around each point.
+    
+    Parameters:
+    - points: A numpy array of shape (n, 2) representing n points in 2D.
+    - threshold: Distance threshold for drawing edges and circles.
+    """
+    plt.figure(figsize=(6, 6))
+    ax = plt.gca()
+    
+    # Plot points and circles
+    for i, point in enumerate(points):
+        plt.scatter(point[0], point[1], color='blue', zorder=2)
+        plt.text(point[0] + 0.05, point[1], f'{i}', fontsize=12, zorder=3)  # Label the points
+        
+        # Draw a circle of radius threshold/2 around each point
+        if threshold is not None:
+            circle = Circle((point[0], point[1]), threshold/2, color='r', fill=False, linestyle='--', alpha=0.5, zorder=1)
+            ax.add_patch(circle)
+    
+    # Optionally plot edges if a threshold is given
+    if threshold is not None:
+        for i, j in combinations(range(len(points)), 2):
+            dist = distance.euclidean(points[i], points[j])
+            if dist <= threshold:
+                plt.plot([points[i][0], points[j][0]], [points[i][1], points[j][1]], 'k-', alpha=0.5, zorder=1)
+    
+    plt.title(f"Vietoris-Rips Complex (Threshold: {threshold})")
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.grid(True)
+    plt.xlim(min(points[:,0]) - threshold, max(points[:,0]) + threshold)
+    plt.ylim(min(points[:,1]) - threshold, max(points[:,1]) + threshold)
+    plt.show()
+
+
+
+# %%
+points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])  # 4 points in a 2D plane
+threshold = 2
+
+#my_v_r(points, threshold)
+
+
+# %%
+# Create some simplices
+#s1 = Simplex([0, 1])  # A 1-simplex (edge)
+s2 = Simplex([1, 2, 3], 0.0)  # A 2-simplex (triangle)
+s3 = Simplex([1, 2, 3, 4, 5], 0.0)
+# Initialize a simplicial complex
+complex1 = SimplicialComplex([s2])
+print(complex1)
+complex1.add_simplex(Simplex([5], 1.0))
+complex1.add_simplex(Simplex([6], 1.0))
+complex1.add_simplex(Simplex([2], 1.0))
+print(complex1)
+complex1.add_simplex(Simplex([2,4], 1.0))
+print(complex1)
+# 
+
+#complex1.add_simplex(Simplex([1,2,3,4]))
+#print(complex1)
+
+
+# Add another simplex
+#complex1.add_simplex(Simplex([2, 3]))
+
+
+# %%
+points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])  # 4 points in a 2D plane
+max_dimension = 2  # We want simplices up to dimension 2 (i.e., triangles)
+threshold = 1.5  # Distance threshold
+
+filtration = vietoris_rips_filtration(points, threshold)
+
+# Display the filtration
+for i, f in enumerate(filtration):
+    print(f"Filtration step {i}: {f}")
+
+# %%
+
+
+
+# Example usage:
+points = np.array([[0, 0], [1, 1], [2, 3], [3, 6]])  # 4 points in a 2D plane
+threshold = 0
+while threshold<5:
+    draw_points(points, threshold)
+    threshold = threshold+1
+
+
+# %%
+
+
+# %%
+
+points = np.random.rand(10,2)
+vor=Voronoi(points)
+fig = voronoi_plot_2d(vor,show_vertices=False, line_width=2, line_colors='red')
+plt.plot(points[:,0], points[:,1], 'ko')
+
+
+# %%
+Del=Delaunay(points)
+Del.simplices
+
+
+# %%
+c=np.ones(len(points))
+cmap = matplotlib.colors.ListedColormap("limegreen")
+plt.tripcolor(points[:,0],points[:,1],Del.simplices, c, edgecolor="k", lw=2, cmap=cmap)
+plt.plot(points[:,0], points[:,1], 'ko')
+plt.show()
+
+# %%
+fig = voronoi_plot_2d(vor,show_vertices=False,line_width=2, line_colors='blue' )
+c=np.ones(len(points))
+cmap = matplotlib.colors.ListedColormap("limegreen")
+plt.tripcolor(points[:,0],points[:,1],Del.simplices, c, edgecolor="k", lw=2,cmap=cmap)
+plt.plot(points[:,0], points[:,1], 'ko')
+plt.show()
+
+# %%
+'''
+print(complex1)
+print(complex1.get_faces())
+print(complex1.get_estrella(Simplex([1])))
+print(complex1.get_link(Simplex([1])))
+print(complex1.get_euler())
+
+print(complex1.get_numero_componentes_conexas())
+print("Dimension of the complex:", complex1.dimension())
+
+print(complex1.get_lista_ord())
+
+print("Complejos con indices menos que 1.5 son: ")
+print(complex1.get_simplices_indice_menor_n(1.5))
+
+thresholdvalues([[1,2],[3,4],[0,0]])
+'''
+
+# %%
+def smith_normal_form_z2(matrix):
+    """
+    Calcula la forma normal de Smith de una matriz con coeficientes en Z2.
+    Args:
+        matrix (list of list of int): Matriz con valores en {0, 1}.
+    Returns:
+        np.ndarray: Matriz en forma normal de Smith.
+    """
+    mat = np.array(matrix, dtype=int) % 2
+    rows, cols = mat.shape
+    row, col = 0, 0
+
+    while row < rows and col < cols:
+        # Buscar pivote en la columna actual
+        pivot_row = next((r for r in range(row, rows) if mat[r, col] == 1), None)
+
+        if pivot_row is not None:
+            # Intercambiar filas para mover el pivote a la posición (row, col)
+            mat[[row, pivot_row]] = mat[[pivot_row, row]]
+        else:
+            # Si no hay pivote en la columna, buscar en la fila
+            pivot_col = next((c for c in range(col, cols) if mat[row, c] == 1), None)
+            if pivot_col is not None:
+                # Intercambiar columnas para mover el pivote a la posición (row, col)
+                mat[:, [col, pivot_col]] = mat[:, [pivot_col, col]]
+            else:
+                # Avanzar si no se encuentra pivote en columna ni en fila
+                col += 1
+                continue
+
+        # Reducir otras filas usando el pivote
+        for r in range(rows):
+            if r != row and mat[r, col] == 1:
+                mat[r] = (mat[r] + mat[row]) % 2
+
+        # Reducir otras columnas usando el pivote
+        for c in range(cols):
+            if c != col and mat[row, c] == 1:
+                mat[:, c] = (mat[:, c] + mat[:, col]) % 2
+
+        row += 1
+        col += 1
+
+    return mat
+
+# %%
+matrix = [
+    [1, 0, 1, 1, 0],
+    [0, 1, 1, 1, 1],
+    [1, 1, 0, 1, 0],
+    [1, 0, 1, 0, 1],
+    [0, 1, 1, 0, 0],
+    [1, 1, 0, 1, 1]
+]
+smith_form = smith_normal_form_z2(matrix)
+print("Forma normal de Smith:")
+print(smith_form)
+
+
+# %%
+# Tetraedro
+simplices = [
+    Simplex([0, 1, 2, 3])
+]
+complejo = SimplicialComplex(simplices)
+numeros_de_betti = complejo.calcular_numero_betti_smith()
+print(numeros_de_betti)
+
+# %%
+# Borde del Tetraedro
+simplices = [
+    Simplex([0, 1, 2]), Simplex([0, 1, 3]), Simplex([0, 2, 3]), Simplex([1, 2, 3])
+]
+complejo = SimplicialComplex(simplices)
+numeros_de_betti = complejo.calcular_numero_betti_smith()
+print(numeros_de_betti)
+
+# %%
+# Anillo
+simplices = [
+    Simplex([0, 1, 3]), Simplex([0, 2, 5]), Simplex([0, 3, 5]), Simplex([1, 2, 4]), 
+    Simplex([1, 3, 4]), Simplex([2, 4, 5])
+]
+complejo = SimplicialComplex(simplices)
+print(complejo)
+numeros_de_betti = complejo.calcular_numero_betti_smith()
+print(numeros_de_betti)
+
+# %%
+# Toro 1
+toro1 = [
+    Simplex([0, 1, 2]), Simplex([0, 2, 3]), Simplex([0, 3, 4]),
+    Simplex([0, 4, 5]), Simplex([0, 5, 1]), Simplex([1, 2, 5]),
+    Simplex([2, 3, 5]), Simplex([3, 4, 5])
+]
+complejoToro1 = SimplicialComplex(toro1)
+numeros_de_betti = complejoToro1.calcular_numero_betti_smith()
+print(numeros_de_betti)
+
+# %%
+# Toro 2
+toro2 = [
+    Simplex([0, 1, 3]), Simplex([1, 2, 3]), Simplex([2, 3, 4]),
+    Simplex([2, 4, 5]), Simplex([3, 4, 5]), Simplex([0, 3, 5]),
+    Simplex([0, 1, 5]), Simplex([1, 2, 5])
+]
+complejoToro2 = SimplicialComplex(toro2)
+numeros_de_betti = complejoToro2.calcular_numero_betti_smith()
+print(numeros_de_betti)
+
+# %%
+
+
+
