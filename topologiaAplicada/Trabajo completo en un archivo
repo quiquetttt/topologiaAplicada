@@ -586,6 +586,80 @@ numeros_de_betti = complejoToro2.calcular_numero_betti_smith()
 print(numeros_de_betti)
 
 # %%
+# Plano proyectivo
+plano_proyectivo = [
+    Simplex([0, 1, 2]), Simplex([0, 2, 3]), Simplex([0, 3, 4]), 
+    Simplex([0, 4, 1]), Simplex([1, 2, 5]), Simplex([2, 3, 5]), 
+    Simplex([3, 4, 5]), Simplex([4, 1, 5])
+]
+complejo_plano = SimplicialComplex(plano_proyectivo)
+print("Números de Betti del plano proyectivo:")
+print(complejo_plano.calcular_numero_betti_smith())
+
+# %%
+# Botella de Klein
+botella_klein = [
+    Simplex([0, 1, 2]), Simplex([0, 2, 3]), Simplex([0, 3, 4]),
+    Simplex([0, 4, 1]), Simplex([1, 2, 5]), Simplex([2, 3, 5]),
+    Simplex([3, 4, 5]), Simplex([4, 1, 5])
+]
+complejo_klein = SimplicialComplex(botella_klein)
+print("Números de Betti de la botella de Klein:")
+print(complejo_klein.calcular_numero_betti_smith())
+
+# %%
+# Anillo (ya está implementado en el código original, pero lo incluyo por completitud)
+anillo = [
+    Simplex([0, 1, 3]), Simplex([0, 2, 5]), Simplex([0, 3, 5]), 
+    Simplex([1, 2, 4]), Simplex([1, 3, 4]), Simplex([2, 4, 5])
+]
+complejo_anillo = SimplicialComplex(anillo)
+print("Números de Betti del anillo:")
+print(complejo_anillo.calcular_numero_betti_smith())
+
+# %%
+# Sombrero del asno
+sombrero_asno = [
+    Simplex([0, 1, 2]), Simplex([0, 2, 3]), Simplex([0, 3, 4]),
+    Simplex([0, 4, 1]), Simplex([1, 2, 5]), Simplex([2, 3, 5]),
+    Simplex([3, 4, 5]), Simplex([4, 1, 5])
+]
+complejo_sombrero = SimplicialComplex(sombrero_asno)
+print("Números de Betti del sombrero del asno:")
+print(complejo_sombrero.calcular_numero_betti_smith())
+
+# %%
+# Complejo simplicial de la transparencia 4
+complejo_transparencia = [
+    Simplex([0, 1, 2]), Simplex([1, 2, 3]), Simplex([2, 3, 4]),
+    Simplex([3, 4, 0])
+]
+complejo_trans = SimplicialComplex(complejo_transparencia)
+print("Números de Betti del complejo de la transparencia 4:")
+print(complejo_trans.calcular_numero_betti_smith())
+
+# %%
+# Doble toro
+doble_toro = [
+    Simplex([0, 1, 2]), Simplex([0, 2, 3]), Simplex([0, 3, 4]),
+    Simplex([0, 4, 5]), Simplex([0, 5, 1]), Simplex([1, 2, 6]),
+    Simplex([2, 3, 6]), Simplex([3, 4, 6]), Simplex([4, 5, 6]),
+    Simplex([5, 1, 6])
+]
+complejo_doble_toro = SimplicialComplex(doble_toro)
+print("Números de Betti del doble toro:")
+print(complejo_doble_toro.calcular_numero_betti_smith())
+
+# %%
+# Alfa complejos (ejemplo con puntos aleatorios)
+points = np.random.rand(10, 2)
+threshold = 0.3
+alfa_complex = vietoris_rips_filtration(points, threshold)[-1]
+print("Números de Betti del alfa complejo:")
+print(alfa_complex.calcular_numero_betti_smith())
+
+
+#PRACTICA 4444
 
 
 
